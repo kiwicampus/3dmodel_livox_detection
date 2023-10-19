@@ -25,6 +25,8 @@ import std_msgs.msg
 from geometry_msgs.msg import Point
 import sensor_msgs.point_cloud2 as pcl2
 from sensor_msgs.msg import PointCloud2, PointField
+from pyquaternion import Quaternion
+
 
 from vis_ros import ROS_MODULE
 ros_vis = ROS_MODULE()
@@ -107,13 +109,31 @@ class ros_demo():
         self.offset_ground = 1.8 
         self.point_cloud_range = [0, -44.8, -2, 224, 44.8, 4]
 
+    
+
     def receive_from_ros(self, msg):
+        
+        ## Rotate with pyquaternion
+        quaternion = Quaternion(x=-0.015, y=0.197, z=0.003, w=0.980)
+
         pc = ros_numpy.numpify(msg)
         points_list = np.zeros((pc.shape[0], 4))
         points_list[:, 0] = copy.deepcopy(np.float32(pc['x']))
         points_list[:, 1] = copy.deepcopy(np.float32(pc['y']))
         points_list[:, 2] = copy.deepcopy(np.float32(pc['z']))
         points_list[:, 3] = copy.deepcopy(np.float32(pc['intensity']))
+
+        # Extract the XYZ coordinates
+        xyz = points_list[:, 0:3]
+
+        # Rotate the XYZ coordinates using the quaternion's rotation matrix
+        rotated_xyz = np.dot(xyz, quaternion.rotation_matrix.T)
+
+        # If you want to replace the original XYZ coordinates with the rotated coordinates,
+        # then assign rotated_xyz back to the appropriate slice of points_list.
+        points_list[:, 0:3] = rotated_xyz
+
+        
 
         # preprocess 
         points_list[:, 2] += points_list[:, 0] * np.tan(self.offset_angle / 180. * np.pi) + self.offset_ground
